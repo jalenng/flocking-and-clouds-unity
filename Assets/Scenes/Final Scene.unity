@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.44657826, g: 0.49641263, b: 0.57481676, a: 1}
+  m_IndirectSpecularColor: {r: 0.44657815, g: 0.49641192, b: 0.57481617, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -247,7 +247,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   numberOfBirds: 50
-  birdPrefab: {fileID: 5364194704367556022, guid: 3e2f36e4fbfdd42d8babe083313fc168, type: 3}
+  birdPrefab: {fileID: 999417709008464597, guid: 3e2f36e4fbfdd42d8babe083313fc168, type: 3}
   maxforce: 2
   maxspeed: 10
   screenRetentionForce: 5
