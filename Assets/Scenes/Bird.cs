@@ -12,10 +12,6 @@ public class Bird : MonoBehaviour
     Vector3 velocity;
     Vector3 acceleration;
     float r;
-    // [SerializeField] float maxforce = 2f;    // Maximum steering force
-    // [SerializeField] float maxspeed = 0.03f;    // Maximum speed
-        [SerializeField] float maxforce = 10f;    // Maximum steering force
-    [SerializeField] float maxspeed = 1f;    // Maximum speed
 
     // Start is called before the first frame update
     void Start()
@@ -30,30 +26,23 @@ public class Bird : MonoBehaviour
         //set initial state of the bird
         float angle = Random.Range(0, 6.2831853071f);
         velocity = new Vector3(Mathf.Cos(angle), Mathf.Sin(angle), Mathf.Sin(angle));
-        Debug.Log(velocity);
+
+        //update the angles(rotation)
+        Quaternion rotationGoal = Quaternion.LookRotation(velocity.normalized, Vector3.up);
+        transform.rotation = rotationGoal;
+
         position = new Vector3(transform.position.x, transform.position.y, transform.position.z);
         r = 2.0f;
-        maxspeed = 2f;
-        maxforce = 0.03f;
 
-        // Quaternion rotation = Quaternion.LookRotation(new Vector3(1,0,0), Vector3.up);
-        // transform.rotation = rotation;
+
 
     }
 
     // Update is called once per frame
     void Update()
     {
-
         Flock(flock.getAllBirds());
         UpdatePosition();
-
-
-        // float xVal = Input.GetAxis("Horizontal") * Time.deltaTime * xMoveSpeed;
-        // Debug.Log(xVal);
-        // transform.Translate(xVal, 0, 0);
-        // counter++;
-        // Debug.Log("size: " + flock.getAllBirds());
     }
 
     private void Flock(List<Bird> birds){
@@ -66,31 +55,43 @@ public class Bird : MonoBehaviour
         coh *= 1.0f;
         // Add the force vectors to acceleration
         ApplyForce(sep);
+        // Debug.Log("sep "+ sep);
         ApplyForce(ali);
+        // Debug.Log("ali "+ ali);
         ApplyForce(coh);
+        // Debug.Log("coh "+ coh);
     }
 
     private void UpdatePosition(){
+
+        // add inverse acceleration for boids out of bounds
+        if(position.x > flock.boxSize) ApplyForce(new Vector3(-flock.screenRetentionForce, 0, 0));
+        if(position.x < -flock.boxSize) ApplyForce(new Vector3(flock.screenRetentionForce, 0, 0));
+        if(position.y > flock.boxSize) ApplyForce(new Vector3(0, -flock.screenRetentionForce, 0));
+        if(position.y < -flock.boxSize) ApplyForce(new Vector3(0, flock.screenRetentionForce, 0));
+        if(position.z > flock.boxSize)  ApplyForce(new Vector3(0, 0, -flock.screenRetentionForce));
+        if(position.z < -flock.boxSize) ApplyForce(new Vector3(0, 0, flock.screenRetentionForce));
+
+
+
         // Update velocity
         velocity += acceleration;
         // Limit speed
-        if (velocity.magnitude > maxspeed)
+        if (velocity.magnitude > flock.maxspeed)
         {
-        velocity = velocity.normalized * maxspeed;
+        velocity = velocity.normalized * flock.maxspeed;
         }
 
-        //update the angles too
-        Quaternion rotationGoal = Quaternion.LookRotation(velocity.normalized, Vector3.up);
-        transform.rotation = Quaternion.Slerp(transform.rotation, rotationGoal, .001f);
+        // Rotate the forward vector towards the target direction by one step
+        transform.rotation = Quaternion.LookRotation(velocity.normalized);
 
-
-        transform.Translate(velocity * Time.deltaTime * 5);
+        transform.Translate(Vector3.forward * velocity.magnitude * Time.deltaTime);
         position = new Vector3(transform.position.x, transform.position.y, transform.position.z);
-
-
 
         // Reset accelertion to 0 each cycle
         acceleration *= 0;
+
+
     }
 
     private void ApplyForce(Vector3 force){
@@ -102,18 +103,14 @@ public class Bird : MonoBehaviour
         // Scale to maximum speed
         desired = desired.normalized;
 
-        desired *= maxspeed;
-
-        // Above two lines of code below could be condensed with new PVector setMag() method
-        // Not using this method until Processing.js catches up
-        // desired.setMag(maxspeed);
+        desired *= flock.maxspeed;
 
         // Steering = Desired minus Velocity
         Vector3 steer = desired - velocity;
 
-        if (steer.magnitude > maxforce)
+        if (steer.magnitude > flock.maxforce)
         {
-        steer = velocity.normalized * maxforce;
+        steer = velocity.normalized * flock.maxforce;
         }
         return steer;
   }
@@ -121,14 +118,13 @@ public class Bird : MonoBehaviour
   // Separation
   // Method checks for nearby boids and steers away
   Vector3 Separate (List<Bird> birds) {
-    float desiredseparation = 8f;
     Vector3 steer = new Vector3(0, 0, 0);
     int count = 0;
     // For every boid in the system, check if it's too close
     foreach (Bird other in birds) {
       float d = Vector3.Distance(position, other.position);
       // If the distance is greater than 0 and less than an arbitrary amount (0 when you are yourself)
-      if ((d > 0) && (d < desiredseparation)) {
+      if ((d > 0) && (d < flock.desiredseparation)) {
         // Calculate vector pointing away from neighbor
         Vector3 diff = position - other.position;
         diff = diff.normalized;
@@ -148,12 +144,13 @@ public class Bird : MonoBehaviour
 
       // Implement Reynolds: Steering = Desired - Velocity
       steer = steer.normalized;
-      steer *= maxspeed;
+      steer *= flock.maxspeed;
       steer = steer - velocity;
 
-        if (steer.magnitude > maxforce)
+        //limit the steer magnitude
+        if (steer.magnitude > flock.maxforce)
         {
-        steer = steer.normalized * maxforce;
+        steer = steer.normalized * flock.maxforce;
         }
     }
     return steer;
@@ -162,28 +159,24 @@ public class Bird : MonoBehaviour
    // Alignment
   // For every nearby boid in the system, calculate the average velocity
   Vector3 Align (List<Bird> birds) {
-    float neighbordist = 50;
     Vector3 sum = new Vector3(0, 0, 0);
     int count = 0;
     foreach (Bird other in birds) {
       float d = Vector3.Distance(position, other.position);
-      if ((d > 0) && (d < neighbordist)) {
+      if ((d > 0) && (d < flock.neighbordist)) {
         sum = sum + other.velocity;
         count++;
       }
     }
     if (count > 0) {
         sum = sum / (float)count;
-      // First two lines of code below could be condensed with new PVector setMag() method
-      // Not using this method until Processing.js catches up
-      // sum.setMag(maxspeed);
 
       // Implement Reynolds: Steering = Desired - Velocity
-      sum = sum.normalized * maxspeed;
+      sum = sum.normalized * flock.maxspeed;
       Vector3 steer = sum - velocity;
-      if (steer.magnitude > maxforce)
+      if (steer.magnitude > flock.maxforce)
         {
-        steer = steer.normalized * maxforce;
+        steer = steer.normalized * flock.maxforce;
         }
       return steer;
     } 
@@ -195,12 +188,11 @@ public class Bird : MonoBehaviour
     // Cohesion
   // For the average position (i.e. center) of all nearby boids, calculate steering vector towards that position
   Vector3 Cohesion (List<Bird> birds) {
-    float neighbordist = 50;
     Vector3 sum = new Vector3(0, 0, 0);   // Start with empty vector to accumulate all positions
     int count = 0;
     foreach (Bird other in birds) {
       float d = Vector3.Distance(position, other.position);
-      if ((d > 0) && (d < neighbordist)) {
+      if ((d > 0) && (d < flock.neighbordist)) {
         sum += other.position; // Add position
         count++;
       }
