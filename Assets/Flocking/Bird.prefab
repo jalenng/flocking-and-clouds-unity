@@ -58,7 +58,6 @@ GameObject:
   - component: {fileID: 1360927490652464491}
   - component: {fileID: 2775868415374248017}
   - component: {fileID: 7427864769773264925}
-  - component: {fileID: 6941888280248428188}
   m_Layer: 0
   m_Name: eg2_body
   m_TagString: Untagged
@@ -131,19 +130,6 @@ MeshRenderer:
   m_SortingLayer: 0
   m_SortingOrder: 0
   m_AdditionalVertexStreams: {fileID: 0}
---- !u!114 &6941888280248428188
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 5510217913539519682}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: cbbb5aea645194f4a904edd3eb51810a, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  xMoveSpeed: 0
 --- !u!1 &7113991980675425083
 GameObject:
   m_ObjectHideFlags: 0
