@@ -36,6 +36,9 @@ public class Bird : MonoBehaviour
         maxspeed = 2f;
         maxforce = 0.03f;
 
+        // Quaternion rotation = Quaternion.LookRotation(new Vector3(1,0,0), Vector3.up);
+        // transform.rotation = rotation;
+
     }
 
     // Update is called once per frame
@@ -76,12 +79,15 @@ public class Bird : MonoBehaviour
         velocity = velocity.normalized * maxspeed;
         }
 
-        transform.Translate(velocity * Time.deltaTime);
+        //update the angles too
+        Quaternion rotationGoal = Quaternion.LookRotation(velocity.normalized, Vector3.up);
+        transform.rotation = Quaternion.Slerp(transform.rotation, rotationGoal, .001f);
+
+
+        transform.Translate(velocity * Time.deltaTime * 5);
         position = new Vector3(transform.position.x, transform.position.y, transform.position.z);
 
-        //update the angles too
-        Quaternion rotation = Quaternion.LookRotation(velocity, new Vector3(1,0,1));
-        transform.rotation = rotation;
+
 
         // Reset accelertion to 0 each cycle
         acceleration *= 0;
