@@ -21,7 +21,7 @@ public class Flock : MonoBehaviour
         birds.Add(b);
     }
 
-    Flock(){
+    void Awake(){
         birds = new List<Bird>();
     }
     // Start is called before the first frame update
