@@ -4,9 +4,9 @@ Shader "Clouds/Noise from Image"
     {
         _Scale ("Scale", Range(0.1, 10.0)) = 2.0
         _StepScale ("Step Size Scale", Range(0.1, 1.0)) = 1.0
-        _NumSteps ("Number of Steps", Range(1, 200)) = 100 
-        _MinHeight ("Min Height", Range(0.0, 5.0)) = 0.0   
-        _MaxHeight ("Max Height", Range(6.0, 10.0)) = 10.0  
+        _NumSteps ("Number of Steps", Range(1, 500)) = 100 
+        _MinHeight ("Min Height", Range(0.0, 100.0)) = 0.0   
+        _MaxHeight ("Max Height", Range(0.0, 100.0)) = 10.0  
         _FadeDist ("Fade Distance", Range(0.0, 10.0)) = 0.5 
         _MoveDir ("Movement Direction", Vector) = (1, 0, 0)
         _SunDir ("Sun Direction", Vector) = (0, 1, 0)
@@ -15,6 +15,8 @@ Shader "Clouds/Noise from Image"
     }
     SubShader
     {
+        // In the rendering queue, transparent objects are rendered last.
+        // We can make use of the depth buffer in the fragment shader.
         Tags { "Queue"="Transparent" }
         LOD 100
 
@@ -35,6 +37,7 @@ Shader "Clouds/Noise from Image"
             struct appdata
             {
                 float4 vertex : POSITION; 
+                float2 uv : TEXCOORD0;
             };
 
             struct v2f
@@ -42,6 +45,7 @@ Shader "Clouds/Noise from Image"
                 float3 worldPos : TEXCOORD2;    // World space position
                 float3 viewDir : TEXCOORD0;     // World space view direction vector
                 float4 clipPos : SV_POSITION;   // Camera clip space position 
+                float4 scrPos : TEXCOORD1;      // Screen space position
             };
 
             float _MinHeight;
@@ -65,9 +69,11 @@ Shader "Clouds/Noise from Image"
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;    // Object space pos --> World space pos
                 o.viewDir = o.worldPos - _WorldSpaceCameraPos;          // View direction is from camera to vertex
                 o.clipPos = UnityObjectToClipPos(v.vertex);             // Object space pos --> Camera clip space pos
+                o.scrPos = ComputeScreenPos(o.clipPos);                // Camera clip space pos --> Screen space pos
                 return o;
             }
 
+            // Given a float3, this function retrieves a noise value from a value noise texture.
             float noiseFromImage(float3 x)
             {
                 x /= _Scale;
@@ -82,6 +88,8 @@ Shader "Clouds/Noise from Image"
                 return -1.0 + 2.0 * lerp(rg.g, rg.r, f.z);
             }
 
+            // This function performs the lighting integration for the cloud color value.
+            // It is invoked during each raymarch step where there is cloud density.
             fixed4 integrate(
                 fixed4 prevColor, 
                 float diffuse, 
@@ -117,6 +125,7 @@ Shader "Clouds/Noise from Image"
                 return prevColor + (color * (1.0 - prevColor.a));
             }
 
+            // This is our ray-marching function.
             // MARCH's arguments are passed as references, since it is a macro function.
             // This allows us to output the cloudColor value to the fragment shader.
             #define MARCH( \
@@ -171,6 +180,8 @@ Shader "Clouds/Noise from Image"
             // P: point
             #define NOISEPROC(N, P)     1.75 * N * saturate(min((_MaxHeight - P.y), (P.y - _MinHeight)) / _FadeDist)
 
+            // Below are some noisemap functions.
+            // We are layering all of them to create detailed noise.
             float noiseMap5(float3 q)
             {
                 float3 p = q;
@@ -231,7 +242,6 @@ Shader "Clouds/Noise from Image"
                 return NOISEPROC(f, p);
             } 
             
-            
             float noiseMap1(float3 q)
             {
                 float3 p = q;
@@ -246,7 +256,18 @@ Shader "Clouds/Noise from Image"
             // It runs on every pixel of the screen and outputs its color.
             fixed4 frag (v2f i) : SV_Target
             {
-                float maxDepth = length(i.viewDir);       // How deep should we march?
+                // How deep should we march?
+
+                // Get the depth from the view direction ray
+                float maxDepth1 = length(i.viewDir);       
+
+                // Get the depth from the camera depth buffer
+                float maxDepth2 = tex2D(_CameraDepthTexture, i.scrPos.xy / i.scrPos.w).r;
+                maxDepth2 = LinearEyeDepth(maxDepth2);
+
+                // Use the minimum of the two depths
+                float maxDepth = min(maxDepth1, maxDepth2);
+
                 fixed4 bgColor = fixed4(1, 1, 1, 0);    
 
                 // Cloud color gets accumulated here
