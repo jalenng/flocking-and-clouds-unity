@@ -12,7 +12,7 @@ public class Flock : MonoBehaviour
     [SerializeField] public float maxforce = 2f;    // Maximum steering force
     [SerializeField] public float maxspeed = 10f;    // Maximum speed
     [SerializeField] public float screenRetentionForce = 5;    // Force applied when a boid hits the screen
-    [SerializeField] public float boxSize = 15;    // Limit flying size of birds
+    [SerializeField] public Vector3 boxSize = new Vector3(5, 5, 5);    // Limit flying size of birds
     [SerializeField] public float desiredseparation = 3f;    // Desired separation distance
     [SerializeField] public float neighbordist = 10f;    // Maximum distance to consider for neighbors
 
@@ -51,8 +51,11 @@ public class Flock : MonoBehaviour
                 // Spawn bird
                 GameObject newBird = Instantiate(
                     birdPrefab, 
-                    new Vector3(Random.Range(-boxSize, boxSize), 
-                    Random.Range(-boxSize, boxSize), 0), 
+                    new Vector3(
+                        Random.Range(-boxSize.x, boxSize.x), 
+                        Random.Range(-boxSize.y, boxSize.y),
+                        Random.Range(-boxSize.z, boxSize.z)
+                    ), 
                     Quaternion.identity
                 );
 

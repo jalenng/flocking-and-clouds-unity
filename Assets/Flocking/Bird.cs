@@ -65,12 +65,12 @@ public class Bird : MonoBehaviour
     private void UpdatePosition(){
 
         // add inverse acceleration for boids out of bounds
-        if(position.x > flock.boxSize) ApplyForce(new Vector3(-flock.screenRetentionForce, 0, 0));
-        if(position.x < -flock.boxSize) ApplyForce(new Vector3(flock.screenRetentionForce, 0, 0));
-        if(position.y > flock.boxSize) ApplyForce(new Vector3(0, -flock.screenRetentionForce, 0));
-        if(position.y < -flock.boxSize) ApplyForce(new Vector3(0, flock.screenRetentionForce, 0));
-        if(position.z > flock.boxSize)  ApplyForce(new Vector3(0, 0, -flock.screenRetentionForce));
-        if(position.z < -flock.boxSize) ApplyForce(new Vector3(0, 0, flock.screenRetentionForce));
+        if(position.x > flock.boxSize.x) ApplyForce(new Vector3(-flock.screenRetentionForce, 0, 0));
+        if(position.x < -flock.boxSize.x) ApplyForce(new Vector3(flock.screenRetentionForce, 0, 0));
+        if(position.y > flock.boxSize.y) ApplyForce(new Vector3(0, -flock.screenRetentionForce, 0));
+        if(position.y < -flock.boxSize.y) ApplyForce(new Vector3(0, flock.screenRetentionForce, 0));
+        if(position.z > flock.boxSize.z)  ApplyForce(new Vector3(0, 0, -flock.screenRetentionForce));
+        if(position.z < -flock.boxSize.z) ApplyForce(new Vector3(0, 0, flock.screenRetentionForce));
 
 
 
