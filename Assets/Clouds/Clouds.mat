@@ -66,18 +66,18 @@ Material:
     - _Cutoff: 0.5
     - _DetailNormalMapScale: 1
     - _DstBlend: 0
-    - _FadeDist: 5
+    - _FadeDist: 10
     - _GlossMapScale: 1
     - _Glossiness: 0.5
     - _GlossyReflections: 1
-    - _MaxHeight: 10
+    - _MaxHeight: 100
     - _Metallic: 0
-    - _MinHeight: 0
+    - _MinHeight: 80
     - _Mode: 0
-    - _NumSteps: 100
+    - _NumSteps: 500
     - _OcclusionStrength: 1
     - _Parallax: 0.02
-    - _Scale: 1
+    - _Scale: 50
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
     - _SrcBlend: 1

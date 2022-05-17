@@ -4,7 +4,7 @@ Shader "Clouds/Generated Noise"
     {
         _Scale ("Scale", Range(0.1, 10.0)) = 2.0
         _StepScale ("Step Size Scale", Range(0.1, 1.0)) = 1.0
-        _NumSteps ("Number of Steps", Range(1, 200)) = 200 
+        _NumSteps ("Number of Steps", Range(1, 500)) = 100 
         _MinHeight ("Min Height", Range(0.0, 5.0)) = 0.0   
         _MaxHeight ("Max Height", Range(6.0, 10.0)) = 10.0  
         _FadeDist ("Fade Distance", Range(0.0, 10.0)) = 0.5 
@@ -13,6 +13,8 @@ Shader "Clouds/Generated Noise"
     }
     SubShader
     {
+        // In the rendering queue, transparent objects are rendered last.
+        // We can make use of the depth buffer in the fragment shader.
         Tags { "Queue"="Transparent" }
         LOD 100
 
@@ -33,6 +35,7 @@ Shader "Clouds/Generated Noise"
             struct appdata
             {
                 float4 vertex : POSITION; 
+                float2 uv : TEXCOORD0;
             };
 
             struct v2f
@@ -40,6 +43,7 @@ Shader "Clouds/Generated Noise"
                 float3 worldPos : TEXCOORD2;    // World space position
                 float3 viewDir : TEXCOORD0;     // World space view direction vector
                 float4 clipPos : SV_POSITION;   // Camera clip space position 
+                float4 scrPos : TEXCOORD1;      // Screen space position
             };
 
             float _MinHeight;
@@ -53,6 +57,8 @@ Shader "Clouds/Generated Noise"
 
             sampler2D _CameraDepthTexture;
 
+            sampler2D _ValueNoise;
+
             // This is our vertex shader function.
             // It runs on the vertices of the object, converts them into clip space, and performs other calculations.
             v2f vert (appdata v)
@@ -61,10 +67,11 @@ Shader "Clouds/Generated Noise"
                 o.worldPos = mul(unity_ObjectToWorld, v.vertex).xyz;    // Object space pos --> World space pos
                 o.viewDir = o.worldPos - _WorldSpaceCameraPos;          // View direction is from camera to vertex
                 o.clipPos = UnityObjectToClipPos(v.vertex);             // Object space pos --> Camera clip space pos
+                o.scrPos = ComputeScreenPos(o.clipPos);                // Camera clip space pos --> Screen space pos
                 return o;
             }
-
-            // Generates a random float between 0 and 1
+            
+            // This function generates a random float between 0 and 1
             float random(float3 value, float3 dotDir) 
             {
                 float3 sinVal = sin(value);
@@ -73,7 +80,7 @@ Shader "Clouds/Generated Noise"
                 return random;
             } 
 
-            // Generates a random float3 with values between 0 and 1
+            // This function generates a random float3 with values between 0 and 1
             float3 random3d(float3 value) 
             {
                 return float3 (
@@ -83,7 +90,7 @@ Shader "Clouds/Generated Noise"
                 );
             } 
 
-            // Noise value generator using 
+            // This function generates a single noise value
             float noise3d(float3 value) 
             {
                 // Scale the noise
@@ -117,6 +124,8 @@ Shader "Clouds/Generated Noise"
                 return noise;
             }
 
+            // This function performs the lighting integration for the cloud color value.
+            // It is invoked during each raymarch step where there is cloud density.
             fixed4 integrate(
                 fixed4 prevColor, 
                 float diffuse, 
@@ -152,6 +161,7 @@ Shader "Clouds/Generated Noise"
                 return prevColor + (color * (1.0 - prevColor.a));
             }
 
+            // This is our ray-marching function.
             // MARCH's arguments are passed as references, since it is a macro function.
             // This allows us to output the cloudColor value to the fragment shader.
             #define MARCH( \
@@ -201,11 +211,13 @@ Shader "Clouds/Generated Noise"
             }
 
             // This macro function processes noise values.
-            // It fades the noise near the height bounds to prevent a strong cutoff.
+            // It fades the noise near the max height bounds to prevent a strong cutoff.
             // N: noise to process
             // P: point
             #define NOISEPROC(N, P)     1.75 * N * saturate(min((_MaxHeight - P.y), (P.y - _MinHeight)) / _FadeDist)
 
+            // Below are some noisemap functions.
+            // We are layering all of them to create detailed noise.
             float noiseMap5(float3 q)
             {
                 float3 p = q;
@@ -266,7 +278,6 @@ Shader "Clouds/Generated Noise"
                 return NOISEPROC(f, p);
             } 
             
-            
             float noiseMap1(float3 q)
             {
                 float3 p = q;
@@ -281,7 +292,18 @@ Shader "Clouds/Generated Noise"
             // It runs on every pixel of the screen and outputs its color.
             fixed4 frag (v2f i) : SV_Target
             {
-                float maxDepth = length(i.viewDir);       // How deep should we march?
+                // How deep should we march?
+
+                // Get the depth from the view direction ray
+                float maxDepth1 = length(i.viewDir);       
+
+                // Get the depth from the camera depth buffer
+                float maxDepth2 = tex2D(_CameraDepthTexture, i.scrPos.xy / i.scrPos.w).r;
+                maxDepth2 = LinearEyeDepth(maxDepth2);
+
+                // Use the minimum of the two depths
+                float maxDepth = min(maxDepth1, maxDepth2);
+
                 fixed4 bgColor = fixed4(1, 1, 1, 0);    
 
                 // Cloud color gets accumulated here
@@ -292,8 +314,8 @@ Shader "Clouds/Generated Noise"
                 MARCH( noiseMap1, _WorldSpaceCameraPos, normViewDir, maxDepth, bgColor, cloudColor );
                 MARCH( noiseMap2, _WorldSpaceCameraPos, normViewDir, maxDepth*2, bgColor, cloudColor );
                 MARCH( noiseMap3, _WorldSpaceCameraPos, normViewDir, maxDepth*3, bgColor, cloudColor );
-                // MARCH( noiseMap4, _WorldSpaceCameraPos, normViewDir, maxDepth*4, bgColor, cloudColor );
-                // MARCH( noiseMap5, _WorldSpaceCameraPos, normViewDir, maxDepth*5, bgColor, cloudColor );
+                MARCH( noiseMap4, _WorldSpaceCameraPos, normViewDir, maxDepth*4, bgColor, cloudColor );
+                MARCH( noiseMap5, _WorldSpaceCameraPos, normViewDir, maxDepth*5, bgColor, cloudColor );
 
                 // Ensure the color values are in range
                 clamp(cloudColor, 0.0, 1.0); 
